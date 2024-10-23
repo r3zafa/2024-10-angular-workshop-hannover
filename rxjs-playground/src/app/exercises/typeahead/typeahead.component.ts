@@ -1,9 +1,23 @@
 import { Component, inject, signal } from '@angular/core';
 import { TypeaheadService } from './typeahead.service';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { debounceTime, distinctUntilChanged, map, mergeAll, switchMap, tap } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, map, mergeAll, of, startWith, switchMap, tap } from 'rxjs';
 import { Book } from './book';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { HttpErrorResponse } from '@angular/common/http';
+
+
+interface State {
+  books: Book[],
+  loading: boolean,
+  lastError: string | undefined
+}
+
+const initialState: State = {
+  books: [],
+  loading: false,
+  lastError: undefined
+}
 
 @Component({
   templateUrl: './typeahead.component.html',
@@ -15,19 +29,48 @@ export class TypeaheadComponent {
   private ts = inject(TypeaheadService);
 
   searchControl = new FormControl('', { nonNullable: true });
-
-  //results = signal<Book[]>([]);
-  loading = signal(false);
-
   searchInput$ = this.searchControl.valueChanges;
 
-  results = toSignal(this.searchInput$.pipe(
+  // option A
+  state$ = toSignal(
+    this.searchInput$.pipe(
+
+      debounceTime(600),
+      distinctUntilChanged(),
+
+      switchMap(term => this.ts.search(term).pipe(
+
+        map(books => ({
+          books,
+          loading: false,
+          lastError: undefined
+        })),
+
+        catchError((error:HttpErrorResponse) => of({
+          books: [],
+          loading: false,
+          lastError: error.message
+        })),
+
+        startWith(initialState),
+
+      )),
+    ), {
+    initialValue: initialState
+  }
+  )
+
+  // option B
+  //results = signal<Book[]>([]);
+  //loading = signal(false);
+  /*results = toSignal(this.searchInput$.pipe(
     debounceTime(600),
     distinctUntilChanged(),
     tap(()=>this.loading.set(true)),
     switchMap(term => this.ts.search(term)),
     tap(()=>this.loading.set(false)),
-  ), {initialValue: []})
+  ), {initialValue: []});*/
+
 
   constructor() {
     const searchInput$ = this.searchControl.valueChanges;
@@ -72,5 +115,4 @@ export class TypeaheadComponent {
   formatAuthors(authors: string[]) {
     return Array.isArray(authors) ? authors.join(', ') : '';
   }
-
 }
