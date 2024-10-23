@@ -31,14 +31,20 @@ export class ChatComponent {
      * Abonniere hierfür den Datenstrom und gib die Nachrichten mit der Methode this.log() aus.
      * - merge (Turn multiple observables into a single observable.)
      * - concat (Emit values from source 1, when complete, subscribe to source 2...)
-     * - race (The observable to emit first is used.)
+     * - concatMap verliert keine daten aber concat verliert daten bis die erste sub completed.
+     * - race (The observable to emit first is used.) (erste sub gewinnt)
      * - forkJoin (When all observables complete, emit the last emitted value from each.)
+     * - zip finktioniert wie forkJoin nur wartet nicht of complete. aber daten werden erst geliefert, wenn alle ergebnise da sind
+     *
      */
 
     /**************!!**************/
 
-     EMPTY.subscribe({                                   
-      next: e => this.log(e),
+    forkJoin([this.msg.julia$,
+      this.msg.georg$,
+      this.msg.john$
+    ]).subscribe({
+      next: e => this.log(e.toString()),
       error: err => this.log('❌ ERROR: ' + err),
       complete: () => this.log('✅ All members left')
     });

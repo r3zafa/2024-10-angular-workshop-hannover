@@ -1,8 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
 import { TypeaheadService } from './typeahead.service';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs';
+import { debounceTime, distinctUntilChanged, map, mergeAll, switchMap, tap } from 'rxjs';
 import { Book } from './book';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
   templateUrl: './typeahead.component.html',
@@ -15,8 +16,18 @@ export class TypeaheadComponent {
 
   searchControl = new FormControl('', { nonNullable: true });
 
-  results = signal<Book[]>([]);
+  //results = signal<Book[]>([]);
   loading = signal(false);
+
+  searchInput$ = this.searchControl.valueChanges;
+
+  results = toSignal(this.searchInput$.pipe(
+    debounceTime(600),
+    distinctUntilChanged(),
+    tap(()=>this.loading.set(true)),
+    switchMap(term => this.ts.search(term)),
+    tap(()=>this.loading.set(false)),
+  ), {initialValue: []})
 
   constructor() {
     const searchInput$ = this.searchControl.valueChanges;
@@ -33,9 +44,29 @@ export class TypeaheadComponent {
      */
 
     /******************************/
+    /*searchInput$.pipe(
+      map(term => this.ts.search(term)),
+      mergeAll()
+    ).subscribe(books => this.results.set(books))
+*/
+    /*
+        searchInput$.pipe(
+          debounceTime(600),
+          distinctUntilChanged(),
 
-    
+          tap((x) => x ? console.log(x) : null
+            // good for debug
+            // does not modify the return of map. safe to use for small events inside pipe
+          ),
+
+          tap(()=>this.loading.set(true)),
+          switchMap(term => this.ts.search(term)),
+          tap(()=>this.loading.set(false)),
+
+        ).subscribe(books => this.results.set(books))
+        */
     /******************************/
+
   }
 
   formatAuthors(authors: string[]) {

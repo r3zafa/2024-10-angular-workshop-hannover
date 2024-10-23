@@ -32,6 +32,7 @@ export class HigherorderComponent {
     /**************!!**************/
 
     this.result$ = this.source$.pipe(
+      switchMap(e => this.es.echo(e))
     );
 
     /**************!!**************/
